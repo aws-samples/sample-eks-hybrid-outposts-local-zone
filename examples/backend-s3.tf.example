@@ -1,0 +1,21 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Remote state for one stack. Copy into the stack directory as backend.tf and
+# change "key" per stack (10-network, 20-clusters, 30-mesh), then run
+# "terraform init -migrate-state".
+#
+# The bucket should have versioning, default encryption with a KMS key,
+# Block Public Access, and a bucket policy that denies non-TLS requests.
+# The 30-mesh state holds the mesh CA private keys, so restrict who can read it.
+
+terraform {
+  backend "s3" {
+    bucket       = "my-terraform-state-111122223333-us-east-1"
+    key          = "eks-hybrid-edge-mesh/10-network.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    kms_key_id   = "alias/terraform-state"
+    use_lockfile = true # S3 native locking (Terraform 1.10+), no DynamoDB table needed
+  }
+}

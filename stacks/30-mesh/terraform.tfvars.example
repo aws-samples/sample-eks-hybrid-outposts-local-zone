@@ -1,0 +1,13 @@
+# Copy to terraform.tfvars and edit. The clusters variable is written for you
+# into clusters.auto.tfvars.json by scripts/export-outputs.sh.
+
+istio_version = "1.30.8"
+mesh_id       = "edge-mesh"
+
+# Lab default. Set to false when cacerts comes from cert-manager + AWS Private CA.
+create_cacerts = true
+
+enforce_strict_mtls = true
+
+# Remote-secret reader tokens are replaced and revoked on the first apply after this many days.
+remote_secret_token_rotation_days = 30

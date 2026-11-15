@@ -1,0 +1,27 @@
+{{/*
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+SPDX-License-Identifier: MIT-0
+
+ClusterIP only: peers reach the gateway on the node IPs listed in meshNetworks,
+not through a load balancer.
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: istio-eastwestgateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "eastwest.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "eastwest.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: status-port
+      port: {{ .Values.statusPort }}
+      targetPort: {{ .Values.statusPort }}
+      protocol: TCP
+    - name: tls
+      port: {{ .Values.tlsPort }}
+      targetPort: {{ .Values.tlsPort }}
+      protocol: TCP

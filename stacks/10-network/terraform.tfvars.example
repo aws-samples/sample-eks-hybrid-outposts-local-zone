@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars and edit. scripts/discover.sh can fill these in for you.
+
+region          = "us-east-1"
+outpost_arn     = "arn:aws:outposts:us-east-1:111122223333:outpost/op-0123456789abcdef0"
+local_zone_name = "us-east-1-mia-2"
+
+# Optional
+# name_prefix      = "edge-mesh"
+# enable_flow_logs = true
+# kms_admin_principal_arns = ["arn:aws:iam::111122223333:role/Deployer", "arn:aws:iam::111122223333:role/BreakGlass"] # default: the Terraform caller; must include it
+# tags             = { Owner = "platform-team" }

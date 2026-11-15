@@ -1,0 +1,19 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Repository-wide Checkov settings. Resource-specific exceptions live next to
+# the resource as "#checkov:skip=<ID>:<reason>" so the justification is reviewed
+# with the code. Only checks that do not apply to this design are skipped here.
+
+compact: true
+quiet: true
+download-external-modules: false
+framework:
+  - terraform
+  - secrets
+  - github_actions
+  - kubernetes
+skip-path:
+  - .terraform
+  # Helm templates are not valid YAML until rendered; tests/chart covers them.
+  - modules/istio-primary/charts

@@ -1,0 +1,84 @@
+{{/*
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+SPDX-License-Identifier: MIT-0
+
+One gateway per selected node, reachable on the node IP through a hostPort on
+tlsPort (the VPC CNI portmap plugin forwards nodeIP:tlsPort to the Pod). A
+DaemonSet (not a Deployment) keeps "one gateway per gateway node" true as nodes
+are replaced, because two Pods cannot claim the same hostPort on one node.
+
+The Pod deliberately stays off host networking: Istio's injector skips every
+hostNetwork Pod, which would leave the "auto" image below unresolved.
+*/}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: istio-eastwestgateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "eastwest.labels" . | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: istio-eastwestgateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "eastwest.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "eastwest.selectorLabels" . | nindent 6 }}
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      annotations:
+        # Istio injects the gateway proxy into the "istio-proxy" container below.
+        inject.istio.io/templates: gateway
+      labels:
+        {{- include "eastwest.labels" . | nindent 8 }}
+        sidecar.istio.io/inject: "true"
+    spec:
+      serviceAccountName: istio-eastwestgateway
+      automountServiceAccountToken: true
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: istio-proxy
+          # "auto" is replaced by the injection webhook with the istiod proxy image.
+          image: auto
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: ISTIO_META_ROUTER_MODE
+              value: sni-dnat
+            - name: ISTIO_META_REQUESTED_NETWORK_VIEW
+              value: {{ .Values.network | quote }}
+          ports:
+            # Pod IP only (kubelet readiness probe); not published on the node.
+            - name: status-port
+              containerPort: {{ .Values.statusPort }}
+              protocol: TCP
+            # Published on the node IP for peer networks; the node security group
+            # admits it only from peer_cidrs.
+            - name: tls
+              containerPort: {{ .Values.tlsPort }}
+              hostPort: {{ .Values.tlsPort }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

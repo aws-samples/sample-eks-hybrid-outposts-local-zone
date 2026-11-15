@@ -1,0 +1,30 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Accepted Trivy findings. Every entry is scoped to a path and explains why.
+# The same decisions are recorded for Checkov as inline skips next to the code.
+
+misconfigurations:
+  - id: AWS-0040
+    paths:
+      - modules/eks-edge-cluster/main.tf
+    statement: >-
+      The EKS public endpoint lets the peer VPC's istiod watch this cluster (the private
+      endpoint's DNS does not resolve across VPC peering). Access is limited to admin and
+      peer NAT CIDRs, and 0.0.0.0/0 is rejected by variable validation unless the lab-only
+      allow_public_access_anywhere opt-in is set (default false; see docs/security.md).
+
+  - id: AWS-0104
+    paths:
+      - modules/eks-edge-cluster/main.tf
+    statement: >-
+      Worker nodes need egress to the EKS API, ECR, AWS service endpoints, and the peer
+      mesh network through NAT. Ingress is restricted to the node group, the cluster
+      security group, and TCP 15443 / ICMP from peer CIDRs.
+
+  - id: KSV-0125
+    paths:
+      - validation/manifests/sleep.yaml
+    statement: >-
+      Test-only curl client pulled from Docker Hub. It runs only during validation and
+      is deleted afterwards. Mirror it to Amazon ECR if your clusters cannot reach Docker Hub.

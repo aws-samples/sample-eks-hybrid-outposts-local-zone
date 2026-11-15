@@ -1,0 +1,29 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+# Istio network this gateway serves (for example network-outposts). Required.
+network: ""
+
+# Nodes that run the gateway. Every selected node becomes a gateway address in meshNetworks.
+nodeSelector:
+  edge-mesh.io/gateway: "true"
+
+tolerations: []
+
+# Port that peers dial for cross-network mTLS (AUTO_PASSTHROUGH).
+tlsPort: 15443
+statusPort: 15021
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+# Gateway resource that exposes every *.local service on tlsPort with SNI passthrough.
+crossNetworkGateway:
+  enabled: true
+
+# Mesh-wide STRICT mTLS (PeerAuthentication in the Istio root namespace).
+enforceStrictMtls: true

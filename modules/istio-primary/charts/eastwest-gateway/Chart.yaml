@@ -1,0 +1,10 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+apiVersion: v2
+name: eastwest-gateway
+description: >-
+  hostPort Istio east-west gateway for multi-network meshes on subnets where a
+  Network Load Balancer is not available (AWS Outposts, AWS Local Zones).
+type: application
+version: 0.3.0
+appVersion: "1.30"

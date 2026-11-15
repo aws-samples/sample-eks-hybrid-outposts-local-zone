@@ -1,0 +1,33 @@
+# Copy to terraform.tfvars and edit. The network variable is written for you
+# into network.auto.tfvars.json by scripts/export-outputs.sh.
+
+# Your workstation or CI egress IP. Find it with: curl -s https://checkip.amazonaws.com
+admin_cidrs = ["203.0.113.10/32"]
+
+# Lab only: open both EKS API endpoints to any IP instead of admin_cidrs (IAM auth still applies).
+# Never in production; see docs/security.md "EKS API endpoint access".
+# allow_public_api_from_anywhere = true
+
+kubernetes_version = "1.37"
+
+outposts_nodes = {
+  instance_type = "m7i.large" # must be installed on your Outposts rack
+  volume_type   = "gp3"
+}
+
+# Optional: name KMS key admins instead of the account root. Must include the Terraform caller.
+# kms_admin_principal_arns = ["arn:aws:iam::111122223333:role/Deployer", "arn:aws:iam::111122223333:role/BreakGlass"]
+
+# Optional, decide BEFORE the first apply (changing it later replaces both clusters):
+# name the cluster admins instead of trusting whoever created the cluster.
+# Include the role that runs the 30-mesh stack.
+# bootstrap_cluster_creator_admin_permissions = false
+# cluster_admin_principal_arns = ["arn:aws:iam::111122223333:role/Deployer", "arn:aws:iam::111122223333:role/BreakGlass"]
+
+# Optional: notify when a cluster's istio-reader token is used from anywhere but the peer NAT IP (alarm is on by default).
+# reader_token_alarm = { alarm_actions = ["arn:aws:sns:us-east-1:111122223333:security-alerts"] }
+
+localzone_nodes = {
+  instance_type = "t3.xlarge" # aws ec2 describe-instance-type-offerings --location-type availability-zone --filters Name=location,Values=<lz>
+  volume_type   = "gp2"
+}

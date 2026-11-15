@@ -1,0 +1,68 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Minimal curl client used to call helloworld from inside the mesh.
+# The namespace is set by validation/run-tests.sh (kubectl -n).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sleep
+  annotations:
+    checkov.io/skip1: CKV_K8S_21=Namespace is chosen by run-tests.sh with kubectl -n
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sleep
+  labels:
+    app: sleep
+  annotations:
+    checkov.io/skip1: CKV_K8S_21=Namespace is chosen by run-tests.sh with kubectl -n
+    checkov.io/skip2: CKV_K8S_43=Short-lived test client; the image is pinned by tag
+    checkov.io/skip3: CKV_K8S_15=IfNotPresent is fine for a pinned tag in a test
+    checkov.io/skip4: CKV2_K8S_6=Isolation is enforced by Istio STRICT mTLS, which this test verifies
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sleep
+  template:
+    metadata:
+      labels:
+        app: sleep
+    spec:
+      serviceAccountName: sleep
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 0
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: sleep
+          image: docker.io/curlimages/curl:8.11.1
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sleep", "infinity"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          livenessProbe:
+            exec:
+              command: ["/bin/true"]
+            periodSeconds: 30
+          readinessProbe:
+            exec:
+              command: ["/bin/true"]
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

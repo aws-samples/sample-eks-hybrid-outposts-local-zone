@@ -1,0 +1,21 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# trivy config . --config trivy.yaml
+# Accepted findings are listed in .trivyignore with a justification.
+
+scan:
+  scanners:
+    - misconfig
+    - secret
+  skip-dirs:
+    - "**/.terraform"
+severity:
+  - CRITICAL
+  - HIGH
+  - MEDIUM
+exit-code: 1
+misconfiguration:
+  terraform:
+    exclude-downloaded-modules: true
+ignorefile: .trivyignore.yaml
