@@ -27,16 +27,18 @@ jobs:
     name: checkov
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       security-events: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Checkov
-        uses: bridgecrewio/checkov-action@99bb2caf247dfd9f03cf984373bc6043d4e32ebf # v12.1347.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          config_file: .checkov.yaml
-          output_format: cli,sarif
-          output_file_path: console,results-checkov.sarif
+          python-version: "3.12"
+      - name: Checkov
+        run: |
+          pip install --no-cache-dir checkov==3.4.5
+          checkov --config-file .checkov.yaml --output cli --output sarif --output-file-path console,results-checkov.sarif
       - name: Upload SARIF
         if: always() && hashFiles('results-checkov.sarif') != ''
         uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
@@ -48,6 +50,7 @@ jobs:
     name: trivy (misconfiguration)
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       security-events: write
     steps:
@@ -55,11 +58,14 @@ jobs:
       - name: Trivy config scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          version: v0.76.2
           scan-type: config
           scan-ref: .
           trivy-config: trivy.yaml
           format: sarif
           output: results-trivy.sarif
+          exit-code: "1"
+          severity: CRITICAL,HIGH,MEDIUM
       - name: Upload SARIF
         if: always() && hashFiles('results-trivy.sarif') != ''
         uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0

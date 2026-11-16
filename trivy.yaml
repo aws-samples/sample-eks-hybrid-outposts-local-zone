@@ -10,6 +10,8 @@ scan:
     - secret
   skip-dirs:
     - "**/.terraform"
+    # Helm templates are not valid until rendered; tests/chart covers them.
+    - modules/istio-primary/charts
 severity:
   - CRITICAL
   - HIGH
