@@ -1,7 +1,8 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 #
-# Creates a semver GitHub release (vX.Y.Z tag + generated notes) from main.
+# Creates a semver GitHub release (vX.Y.Z tag + notes grouped by commit type:
+# breaking changes, security, features, fixes, docs, maintenance) from main.
 # The bump is derived from Conventional Commits since the last tag:
 #   BREAKING CHANGE / "type!:"  -> major
 #   feat:                       -> minor
@@ -98,16 +99,84 @@ jobs:
             echo "next=${next}"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Build release notes
+        if: steps.version.outputs.release == 'true'
+        env:
+          NEXT: ${{ steps.version.outputs.next }}
+          PREVIOUS: ${{ steps.version.outputs.previous }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          range="HEAD"
+          [ -n "$PREVIOUS" ] && range="${PREVIOUS}..HEAD"
+
+          # One tab-separated line per commit: sha, subject, body flag.
+          # Merge commits are skipped; their content is in the commits they merge.
+          log="$(mktemp)"
+          git log "$range" --no-merges --format='%h%x09%s' > "$log"
+          breaking_shas="$(git log "$range" --no-merges --format='%h%x09%b%x00' \
+            | tr '\n' ' ' | tr '\0' '\n' \
+            | grep -E 'BREAKING[ -]CHANGE:' | cut -f1 || true)"
+
+          notes="$RUNNER_TEMP/notes.md"
+          : > "$notes"
+
+          TAB="$(printf '\t')"
+          # section <title> <subject-regex>: prints matching commits, once each.
+          section() {
+            local title="$1" re="$2" out
+            out="$(grep -E "${TAB}(${re})" "$log" | grep -Fvxf "$used" || true)"
+            [ -z "$out" ] && return 0
+            printf '## %s\n\n' "$title" >> "$notes"
+            while IFS=$'\t' read -r sha subject; do
+              # Strip the type prefix, keep the scope as bold text.
+              msg="$(printf '%s' "$subject" \
+                | sed -E 's/^[a-z]+(\(([^)]+)\))?!?: ?/\2|/' \
+                | sed -E 's/^\|//; s/^([^|]+)\|/**\1:** /')"
+              printf -- '- %s ([`%s`](%s/commit/%s))\n' "$msg" "$sha" "$REPO_URL" "$sha" >> "$notes"
+            done <<< "$out"
+            printf '\n' >> "$notes"
+            printf '%s\n' "$out" >> "$used"
+          }
+
+          used="$(mktemp)"
+          # Breaking changes first: "!" marker or BREAKING CHANGE footer.
+          {
+            awk -F'\t' '$2 ~ /^[a-z]+(\([^)]+\))?!:/ { print }' "$log"
+            for s in $breaking_shas; do awk -F'\t' -v s="$s" '$1 == s { print }' "$log"; done
+          } | awk '!seen[$0]++' > "$used.breaking"
+          if [ -s "$used.breaking" ]; then
+            printf '## ⚠️ Breaking changes\n\n' >> "$notes"
+            while IFS=$'\t' read -r sha subject; do
+              printf -- '- %s ([`%s`](%s/commit/%s))\n' "$subject" "$sha" "$REPO_URL" "$sha" >> "$notes"
+            done < "$used.breaking"
+            printf '\n' >> "$notes"
+            cp "$used.breaking" "$used"
+          fi
+
+          section "🔒 Security"        '[a-z]+\(security\)|security(\(|:)'
+          section "✨ Features"        'feat(\(|:)'
+          section "🐛 Bug fixes"       'fix(\(|:)'
+          section "📚 Documentation"   'docs(\(|:)'
+          section "🧹 Maintenance"     '(ci|chore|refactor|test|build|perf|style|revert)(\(|:)'
+          section "Other changes"      '.'
+
+          if [ -n "$PREVIOUS" ]; then
+            printf '**Full changelog**: %s/compare/%s...%s\n' "$REPO_URL" "$PREVIOUS" "$NEXT" >> "$notes"
+          fi
+          cat "$notes"
+          echo "notes_file=$notes" >> "$GITHUB_ENV"
+
       - name: Create release
         if: steps.version.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           NEXT: ${{ steps.version.outputs.next }}
-          PREVIOUS: ${{ steps.version.outputs.previous }}
         run: |
           set -euo pipefail
-          args=(--target "$GITHUB_SHA" --title "$NEXT" --generate-notes --latest)
-          if [ -n "$PREVIOUS" ]; then
-            args+=(--notes-start-tag "$PREVIOUS")
-          fi
-          gh release create "$NEXT" "${args[@]}"
+          gh release create "$NEXT" \
+            --target "$GITHUB_SHA" \
+            --title "$NEXT" \
+            --notes-file "$notes_file" \
+            --latest
